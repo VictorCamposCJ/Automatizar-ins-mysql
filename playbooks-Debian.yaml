@@ -1,0 +1,131 @@
+# Actualizar caché de los paquetes
+- name: Actualizar caché de los repositorios
+  apt:
+    name: '*'
+    state: latest
+    update_cache: true
+# Instalar MariaDB
+- name: Instalación MariaDB
+  apt:
+          name:
+            - mariadb-server
+            - python3
+            - python3-mysqldb
+            - ufw
+          state: latest
+  when: ansible_facts.distribution == "Debian"
+
+# Iniciar servicio MariaDB
+- name: Iniciar servicio MariaDB
+  service:
+    name: mariadb
+    enabled: true
+    state: started
+  when: ansible_facts.distribution == "Debian"
+# Reiniciar el servicio de mariadb
+- name: reiniciar servico MariaDB
+  service:
+    name: mariadb
+    state: restarted
+  tags: mariadb
+  when: ansible_facts.distribution == "Debian"
+      # Secure_installation y cambio de contraseña usuario root
+- name: MySQL-secure_installation
+  shell:
+    echo -e "\nn\nY\nViewnext\nViewnext\nY\nn\nY\nY\n" | sudo mysql_secure_installation
+  args:
+    executable: /bin/bash
+  tags: mariadb
+  when: ansible_facts.distribution == "Debian"
+
+# <--------------- IMPORTAR CONFIGURACIÓN A MARIADB DEBIAN ------------------------->
+
+- name: Establecer configuración Mariadb Debian
+  template:
+          src: /home/vagrant/src/recursos/50-server-debian.cnf
+          dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+          owner: root
+          group: root
+          mode: '0755'
+  when: ansible_facts.distribution == "Debian"
+
+- name: Reiniciar mariadb
+  service:
+          name: mariadb
+          enabled: true
+          state: restarted
+
+
+# Creación de la base de datos de wordpress
+- name: crear base de datos
+  community.mysql.mysql_db:
+    name: maria
+    login_user: root
+    login_password: Viewnext
+    state: present
+  tags: mariadb
+  when: ansible_facts['os_family'] == "Debian"
+# Usuario para la base de datos
+- name: Crear usuario para base de datos de wordpress
+  mysql_user:
+    login_user: root
+    login_password: Viewnext
+    name: maria
+    password: ccwp
+    priv: 'maria.*:ALL,GRANT'
+    host: '%'
+    state: present
+  tags: mariadb
+  when: ansible_facts.distribution == "Debian"
+# Habilitar MariaDb en Firewall
+- name: Habilitar servicio mysql en firewall
+  ufw:
+    state: enabled
+  tags: mariadb
+  when: ansible_facts.distribution == "Debian"
+# Abrir puerto 3306 en firewall para conexión remota
+- name: abrir pueto 3306
+  ufw:
+    rule: allow
+    port: 3306
+  tags: mariadb
+  when: ansible_facts.distribution == "Debian"
+# Habilitar puerto 22 firewall
+- name: Habilitar puerto 22
+  ufw:
+    rule: allow
+    port: 22
+  when: ansible_facts.distribution == "Debian"
+# Reiniciar servicio firewall
+- name: Reiniciar la configuración del firewall
+  ufw:
+    state: reloaded
+  tags: mariadb
+  when: ansible_facts.distribution == "Debian"
+
+#     <--------------- CREACIÓN DEL FICHERO BACKUP EN CASO DE QUE NO EXISTA -------------->
+
+- name: Crear directorio backup
+  become: true
+  file:
+          path: /backup
+          state: directory
+
+#       <----------- COPIA DEL ÚLTIMO BACKUP DEL CONTROL NODE AL SERVIDOR REMOTO ----------->
+
+- name: Copiar backup a servidor remoto Debian
+  template:
+          src: /home/vagrant/src/recursos/backup-file.sql
+          dest: /backup/
+  when: ansible_facts.distribution == "Debian"
+
+#       <----------------------- RESTAURACIÓN DE LA BASE DE DATOS ---------------------->
+
+- name: Restaurar base de datos
+  mysql_db:
+          login_user: root
+          login_password: Viewnext
+          name: maria
+          state: import
+          target: /backup/backup-file.sql
+  
