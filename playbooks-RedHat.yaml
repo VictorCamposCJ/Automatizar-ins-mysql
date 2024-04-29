@@ -122,6 +122,7 @@
           state: import
           target: /backup/backup-file.sql
 
+/*
 - name: Cambiar la URL del sitio en la base de datos de WordPress
   mysql_db:
     login_user: root
@@ -143,3 +144,4 @@
       file:
         path: /tmp/wp_options.sql
         state: absent
+*\
