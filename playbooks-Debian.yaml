@@ -117,6 +117,7 @@
           state: import
           target: /backup/backup-file.sql
   
+/*
 - name: Cambiar la URL del sitio en la base de datos de WordPress
 
 - name:    Instala el paquete python-mysqldb
@@ -147,3 +148,4 @@
   file:
     path: /tmp/commands.sql
     state: absent
+*\
