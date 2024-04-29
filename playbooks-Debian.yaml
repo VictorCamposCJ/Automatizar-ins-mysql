@@ -13,7 +13,6 @@
             - python3-mysqldb
             - ufw
           state: latest
-  when: ansible_facts.distribution == "Debian"
 
 # Iniciar servicio MariaDB
 - name: Iniciar servicio MariaDB
@@ -21,14 +20,12 @@
     name: mariadb
     enabled: true
     state: started
-  when: ansible_facts.distribution == "Debian"
 # Reiniciar el servicio de mariadb
 - name: reiniciar servico MariaDB
   service:
     name: mariadb
     state: restarted
   tags: mariadb
-  when: ansible_facts.distribution == "Debian"
       # Secure_installation y cambio de contraseña usuario root
 - name: MySQL-secure_installation
   shell:
@@ -36,7 +33,6 @@
   args:
     executable: /bin/bash
   tags: mariadb
-  when: ansible_facts.distribution == "Debian"
 
 # <--------------- IMPORTAR CONFIGURACIÓN A MARIADB DEBIAN ------------------------->
 
@@ -47,7 +43,6 @@
           owner: root
           group: root
           mode: '0755'
-  when: ansible_facts.distribution == "Debian"
 
 - name: Reiniciar mariadb
   service:
@@ -64,7 +59,6 @@
     login_password: Viewnext
     state: present
   tags: mariadb
-  when: ansible_facts['os_family'] == "Debian"
 # Usuario para la base de datos
 - name: Crear usuario para base de datos de wordpress
   mysql_user:
@@ -76,32 +70,27 @@
     host: '%'
     state: present
   tags: mariadb
-  when: ansible_facts.distribution == "Debian"
 # Habilitar MariaDb en Firewall
 - name: Habilitar servicio mysql en firewall
   ufw:
     state: enabled
   tags: mariadb
-  when: ansible_facts.distribution == "Debian"
 # Abrir puerto 3306 en firewall para conexión remota
 - name: abrir pueto 3306
   ufw:
     rule: allow
     port: 3306
   tags: mariadb
-  when: ansible_facts.distribution == "Debian"
 # Habilitar puerto 22 firewall
 - name: Habilitar puerto 22
   ufw:
     rule: allow
     port: 22
-  when: ansible_facts.distribution == "Debian"
 # Reiniciar servicio firewall
 - name: Reiniciar la configuración del firewall
   ufw:
     state: reloaded
   tags: mariadb
-  when: ansible_facts.distribution == "Debian"
 
 #     <--------------- CREACIÓN DEL FICHERO BACKUP EN CASO DE QUE NO EXISTA -------------->
 
@@ -117,7 +106,6 @@
   template:
           src: /home/vagrant/src/recursos/backup-file.sql
           dest: /backup/
-  when: ansible_facts.distribution == "Debian"
 
 #       <----------------------- RESTAURACIÓN DE LA BASE DE DATOS ---------------------->
 
@@ -129,3 +117,33 @@
           state: import
           target: /backup/backup-file.sql
   
+- name: Cambiar la URL del sitio en la base de datos de WordPress
+
+- name:    Instala el paquete python-mysqldb
+  apt:
+  name: python-mysqldb
+  state: present
+- name: Crea el archivo SQL
+  copy:
+  content: |
+          USE nombre_de_tu_base_de_datos;
+          UPDATE wp_options SET option_value='http://192.168.10.80' WHERE option_name='siteurl' OR option_name='home';
+  dest: /tmp/commands.sql
+
+    - name: Importar base de datos
+  mysql_db:
+    login_user: root
+    login_password: Viewnext
+    name: maria
+    state: import
+    target: /tmp/commands.sql
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+
+- name: Ejecutar archivo SQL
+  command: mysql -u root -p"Viewnext" maria < /tmp/commands.sql
+
+- name: Eliminar archivo SQL temporal
+  file:
+    path: /tmp/commands.sql
+    state: absent
