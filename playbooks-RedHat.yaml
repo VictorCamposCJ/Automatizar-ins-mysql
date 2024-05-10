@@ -121,27 +121,3 @@
           name: maria
           state: import
           target: /backup/backup-file.sql
-
-/*
-- name: Cambiar la URL del sitio en la base de datos de WordPress
-  mysql_db:
-    login_user: root
-    login_password: Viewnext
-    name: maria
-    state: import
-    target: /tmp/wp_options.sql
-  vars:
-    wp_options_sql: |
-      UPDATE wp_options SET option_value='http://192.168.10.80' WHERE option_name='siteurl' OR option_name='home';
-  block:
-    - name: Crear archivo SQL temporal
-      copy:
-        content: "{{ wp_options_sql }}"
-        dest: /tmp/wp_options.sql
-    - name: Ejecutar archivo SQL
-      command: mysql -u root -p"{{ login_password }}" maria < /tmp/wp_options.sql
-    - name: Eliminar archivo SQL temporal
-      file:
-        path: /tmp/wp_options.sql
-        state: absent
-*\
